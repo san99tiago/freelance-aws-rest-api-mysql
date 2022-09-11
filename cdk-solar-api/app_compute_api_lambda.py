@@ -2,7 +2,7 @@
 import aws_cdk as cdk
 
 import add_tags
-from cdk_compute.cdk_stack_compute import CdkStackCompute
+from cdk_compute.cdk_stack_api_lambda import CdkStackComputeApiLambda
 
 
 DEPLOYMENT_VERSION = "v1"
@@ -12,9 +12,9 @@ MAIN_RESOURCES_NAME = "solar-api"
 
 app = cdk.App()
 
-compute_stack = CdkStackCompute(
+compute_stack = CdkStackComputeApiLambda(
     app,
-    "{}-stack-compute-cdk".format(MAIN_RESOURCES_NAME),
+    "{}-stack-compute-api-lambda-cdk".format(MAIN_RESOURCES_NAME),
     NAME_PREFIX,
     MAIN_RESOURCES_NAME,
     DEPLOYMENT_ENVIRONMENT,

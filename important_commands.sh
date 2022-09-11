@@ -44,6 +44,9 @@ cd cdk-solar-api || echo "Make sure that the folder exists"
 # Initialize project
 cdk init --language python
 
+# If the virtual environment didn't create, do it manually
+python3 -m venv ./.venv
+
 # Access the virtual environment and install its dependencies
 source .venv/bin/activate || echo "Make sure that virtual env exists"
 pip install -r requirements.txt || pip3 install -r requirements.txt
@@ -55,17 +58,23 @@ pip install -r requirements.txt || pip3 install -r requirements.txt
 
 cdk bootstrap
 
-# Storage Stack
-cdk synthesize --app "python3 app_storage.py"
-cdk diff --app "python3 app_storage.py"
-cdk deploy --app "python3 app_storage.py"
-cdk destroy --app "python3 app_storage.py"
+# Storage Stack DynamoDB
+cdk synthesize --app "python3 app_storage_dynamodb.py"
+cdk diff --app "python3 app_storage_dynamodb.py"
+cdk deploy --app "python3 app_storage_dynamodb.py"
+cdk destroy --app "python3 app_storage_dynamodb.py"
 
-# Compute Stack (requires Storage Stack already deployed)
-cdk synthesize --app "python3 app_compute.py"
-cdk diff --app "python3 app_compute.py"
-cdk deploy --app "python3 app_compute.py"
-cdk destroy --app "python3 app_compute.py"
+# Storage Stack RDS
+cdk synthesize --app "python3 app_storage_rds.py"
+cdk diff --app "python3 app_storage_rds.py"
+cdk deploy --app "python3 app_storage_rds.py"
+cdk destroy --app "python3 app_storage_rds.py"
+
+# Compute Stack API-Lambda (requires Storage Stacks already deployed)
+cdk synthesize --app "python3 app_compute_api_lambda.py"
+cdk diff --app "python3 app_compute_api_lambda.py"
+cdk deploy --app "python3 app_compute_api_lambda.py"
+cdk destroy --app "python3 app_compute_api_lambda.py"
 
 
 ################################################################################

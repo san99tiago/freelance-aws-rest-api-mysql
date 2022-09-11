@@ -11,7 +11,7 @@ from aws_cdk import (
 )
 from constructs import Construct
 
-class CdkStackCompute(Stack):
+class CdkStackComputeApiLambda(Stack):
 
     def __init__(
         self,
@@ -37,6 +37,7 @@ class CdkStackCompute(Stack):
         self.create_policy_statement_for_lambda_to_dynamodb()
         self.create_lambda_role_policy()
         self.create_lambda_role()
+        self.create_lambda_layer()
         self.create_lambda_function()
 
         # API gateway creation
@@ -108,6 +109,25 @@ class CdkStackCompute(Stack):
         self.lambda_role.attach_inline_policy(self.lambda_role_policy)
 
 
+    def create_lambda_layer(self):
+        """
+        Method that creates the Lambda layer for python external dependencies.
+        """
+        # Get relative path for folder that contains Lambda function sources
+        # ! Note--> we must obtain parent dirs to create path (that's why there are "os.path.dirname()")
+        PATH_TO_LAYER_FOLDER = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "lambda_layer"
+        )
+        self.lambda_layer = aws_lambda.LayerVersion(
+            self,
+            id="{}-LambdaLayer".format(self.construct_id),
+            compatible_runtimes=[aws_lambda.Runtime.PYTHON_3_9],
+            description="Lambda layer for python dependencies used for {} solution.".format(self.main_resources_name),
+            code=aws_lambda.Code.from_asset(PATH_TO_LAYER_FOLDER),
+        )
+
+
     def create_lambda_function(self):
         """
         Method that creates the main Lambda function.
@@ -116,7 +136,7 @@ class CdkStackCompute(Stack):
         # ! Note--> we must obtain parent dirs to create path (that's why there is "os.path.dirname()")
         PATH_TO_FUNCTION_FOLDER = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
-            "lambda"
+            "lambda_code"
         )
         print("Source code for lambda function obtained from: ", PATH_TO_FUNCTION_FOLDER)
 
