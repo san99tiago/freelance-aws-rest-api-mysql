@@ -2,7 +2,7 @@
 import aws_cdk as cdk
 
 import add_tags
-from cdk_storage.cdk_stack_storage import CdkStackStorage
+from cdk_storage.cdk_stack_rds import CdkStackStorageRDS
 
 
 DEPLOYMENT_VERSION = "v1"
@@ -12,9 +12,9 @@ MAIN_RESOURCES_NAME = "solar-api"
 
 app = cdk.App()
 
-storage_stack = CdkStackStorage(
+storage_stack = CdkStackStorageRDS(
     app,
-    "{}-stack-storage-cdk".format(MAIN_RESOURCES_NAME),
+    "{}-stack-storage-rds-cdk".format(MAIN_RESOURCES_NAME),
     NAME_PREFIX,
     MAIN_RESOURCES_NAME,
     DEPLOYMENT_ENVIRONMENT,

@@ -1,5 +1,5 @@
 {
-  "app": "python3 app_storage.py",
+  "app": "python3 app_storage_dynamodb.py",
   "context": {
     "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
     "@aws-cdk/core:stackRelativeExports": true,

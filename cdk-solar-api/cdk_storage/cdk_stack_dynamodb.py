@@ -8,7 +8,7 @@ from aws_cdk import (
 )
 from constructs import Construct
 
-class CdkStackStorage(Stack):
+class CdkStackStorageDynamoDB(Stack):
 
     def __init__(
         self,
