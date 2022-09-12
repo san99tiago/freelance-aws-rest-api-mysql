@@ -33,6 +33,7 @@ class CdkStackStorageRDS(Stack):
         # Relevant CloudFormation outputs
         self.show_cloudformation_outputs()
 
+    # TODO: Validate if RDS secret should be here or not
 
     def create_rds(self):
         """

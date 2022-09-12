@@ -1,26 +1,36 @@
+# Built-in imports
 import logging
 import os
 import json
 import boto3
 
-
+# External dependencies imports (from lambda layer)
+from aws_lambda_powertools.utilities import parameters
 import mysql.connector
 
 # Configure logging
 LOG = logging.getLogger()
 LOG.setLevel(logging.INFO)
 
-# Configure AWS resources
+# Get environment variables for DynamoDB, RDS and Secrets
 TABLE_NAME = os.environ.get("TABLE_NAME")
+RDS_HOST = os.environ.get("RDS_HOST")
+RDS_DATABASE = os.environ.get("RDS_DATABASE")
+SECRET_NAME = os.environ.get("SECRET_NAME")
+
+# Configure AWS resources
 dynamodb_resource = boto3.resource("dynamodb")
 table = dynamodb_resource.Table(TABLE_NAME)
+rds_secret = parameters.get_secret(SECRET_NAME)
 
+# Load RDS connector
 mydb = mysql.connector.connect(
-  host="solar-database.cmtiqv7pgjwb.us-east-1.rds.amazonaws.com",
-  user="admin",
-  password="password",
-  database="solar_db"
+    host=RDS_HOST,
+    user=rds_secret["username"],
+    password=rds_secret["password"],
+    database=RDS_DATABASE,
 )
+
 
 
 def get_return_format(status_code, body):
@@ -62,12 +72,12 @@ def read_lead_from_id(event, lead_id):
             json_response = {
                 "message": "There was not a match for the query.",
                 "details": "Server unable to read request"}
-
         print("json_response is: ", json_response)
-        return get_return_format(200, json.dumps(json_response, indent=2, default=str))
 
         cursor.close()
         mydb.close()
+
+        return get_return_format(200, json.dumps(json_response, indent=2, default=str))
     except mysql.connector.Error as e:
         print("Error reading data from MySQL table: ", e)
 
