@@ -35,11 +35,7 @@ class CdkStackComputeApiLambda(Stack):
         # Obtain important values from outputs of other stacks
         self.load_values_from_other_stacks_outputs()
 
-        # Secrets Manager Secret creation
-        self.create_secret_for_rds_credentials()
-
         # Lambda function creation
-        self.create_policy_statement_for_lambda_to_dynamodb()
         self.create_policy_statement_for_lambda_to_secrets()
         self.create_lambda_role_policy()
         self.create_lambda_role()
@@ -57,52 +53,15 @@ class CdkStackComputeApiLambda(Stack):
         """
         Method to load outputs from other stacks to use in this one (decoupled approach).
         """
-        self.table_arn = Fn.import_value("DynamoDBTableARN")
-        print("Loaded <table_arn> value from other stack output is: ", self.table_arn)
+        self.rds_host = Fn.import_value("RDSHost{}".format(self.deployment_environment))
+        self.rds_db_name = Fn.import_value("RDSDBName{}".format(self.deployment_environment))
+        self.secret_name_for_rds_credentials = Fn.import_value("SecretNameForRDSCredentials{}".format(self.deployment_environment))
+        self.secret_name_for_api_credentials = Fn.import_value("SecretNameForAPICredentials{}".format(self.deployment_environment))
 
-    # TODO: validate if move it to RDS deployment or not!
-    def create_secret_for_rds_credentials(self):
-        """
-        Method to create an AWS Secrets Manager Secret.
-        """
-        self.database_secret = aws_secretsmanager.Secret(
-            self,
-            id="{}-Secret".format(self.construct_id),
-            secret_name="{}{}-Secret".format(self.name_prefix, self.main_resources_name),
-            description="Secret for the RDS of the {} stack.".format(self.main_resources_name),
-            generate_secret_string=aws_secretsmanager.SecretStringGenerator(
-                secret_string_template=json.dumps(
-                    {
-                        "username": "admin",
-                    }
-                ),
-                generate_string_key="password"
-            )
-        )
-
-
-    def create_policy_statement_for_lambda_to_dynamodb(self):
-        """
-        Method to create IAM policy statement for dynamodb usage.
-        """
-        self.dynamodb_access_policy_statement = aws_iam.PolicyStatement(
-            actions=[
-                "dynamodb:PutItem",
-                "dynamodb:UpdateItem",
-                "dynamodb:DeleteItem",
-                "dynamodb:BatchWriteItem",
-                "dynamodb:GetItem",
-                "dynamodb:BatchGetItem",
-                "dynamodb:Scan",
-                "dynamodb:Query",
-                "dynamodb:ConditionCheckItem"
-            ],
-            effect=aws_iam.Effect.ALLOW,
-            resources=[
-                self.table_arn,
-                "{}/index/*".format(self.table_arn),
-            ],
-        )
+        print("Loaded <rds_host> value from other stack output is: ", self.rds_host)
+        print("Loaded <rds_db_name> value from other stack output is: ", self.rds_db_name)
+        print("Loaded <secret_name_for_rds_credentials> value from other stack output is: ", self.secret_name_for_rds_credentials)
+        print("Loaded <secret_name_for_api_credentials> value from other stack output is: ", self.secret_name_for_api_credentials)
 
 
     def create_policy_statement_for_lambda_to_secrets(self):
@@ -129,7 +88,6 @@ class CdkStackComputeApiLambda(Stack):
             id="{}-Policy".format(self.construct_id),
             policy_name="{}{}-Policy".format(self.name_prefix, self.main_resources_name),
             statements=[
-                self.dynamodb_access_policy_statement,
                 self.secrets_access_policy_statement,
             ],
         )
@@ -143,7 +101,7 @@ class CdkStackComputeApiLambda(Stack):
             self,
             id="{}-Role".format(self.construct_id),
             role_name="{}{}-Role".format(self.name_prefix, self.main_resources_name),
-            description="Role for {} stack".format(self.main_resources_name),
+            description="Role for {} stack in ({}) environment".format(self.main_resources_name, self.deployment_environment),
             assumed_by=aws_iam.ServicePrincipal("lambda.amazonaws.com"),
             managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")],
         )
@@ -190,16 +148,16 @@ class CdkStackComputeApiLambda(Stack):
             handler="lambda_function.lambda_handler",
             runtime=aws_lambda.Runtime.PYTHON_3_9,
             environment={
-                "TABLE_NAME": "{}{}-Table".format(self.name_prefix, self.main_resources_name),
-                "RDS_HOST": "TODO",
-                "RDS_DATABASE": "TODO",
-                "SECRET_NAME": self.database_secret.secret_name,
+                "RDS_HOST": self.rds_host,
+                "RDS_DATABASE": self.rds_db_name,
+                "RDS_SECRET_NAME": self.secret_name_for_rds_credentials,
+                "API_SECRET_NAME": self.secret_name_for_api_credentials,
             },
-            description="Lambda for {} functionalities (connects with dynamodb to manage leads).".format(self.main_resources_name),
+            description="Lambda for {} functionalities (connects with rds to read leads and record API calls) in ({}) environment.".format(self.main_resources_name,self.deployment_environment),
             layers=[self.lambda_layer],
             role=self.lambda_role,
-            timeout=Duration.seconds(15),
-            memory_size=256,
+            timeout=Duration.minutes(1),
+            memory_size=512,
         )
 
         self.lambda_function.add_alias(self.deployment_environment)
@@ -214,7 +172,7 @@ class CdkStackComputeApiLambda(Stack):
             self,
             id="{}-RestApi".format(self.construct_id),
             rest_api_name="{}{}".format(self.name_prefix, self.main_resources_name),
-            description="API to create/read leads for the {} stack".format(self.main_resources_name),
+            description="API to create/read leads for the {} stack for ({}) environment".format(self.main_resources_name, self.deployment_environment),
             handler=self.lambda_function,
             default_cors_preflight_options=aws_apigateway.CorsOptions(
                 allow_origins=aws_apigateway.Cors.ALL_ORIGINS,
@@ -282,27 +240,12 @@ class CdkStackComputeApiLambda(Stack):
         CfnOutput(
             self,
             "CompleteApiUrl",
-            value="{}{}".format(self.api.url, "urls"),
+            value="{}{}".format(self.api.url, "leads"),
             description="Complete URL for the API endpoint",
         )
-
         CfnOutput(
             self,
-            "SecretName",
-            value=self.database_secret.secret_name,
-            description="Name of the AWS Secret for the RDS credentials",
-        )
-
-        CfnOutput(
-            self,
-            "SecretARN",
-            value=self.database_secret.secret_arn,
-            description="ARN of the AWS Secret for the RDS credentials",
-        )
-
-        CfnOutput(
-            self,
-            "SecretFullARN",
-            value=self.database_secret.secret_full_arn,
-            description="Full ARN of the AWS Secret for the RDS credentials",
+            "CompleteApiUrlWithQueryParams",
+            value="{}{}?username=username&password=password&supplier_id=supplier_id&agent_id=agent_id&lead_id=lead_id".format(self.api.url, "leads"),
+            description="Complete URL for the API endpoint",
         )

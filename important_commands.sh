@@ -38,8 +38,8 @@ aws configure
 cdk bootstrap aws://ACCOUNT-NUMBER-1/REGION-1
 
 # Create the CDK project's folder
-mkdir cdk-solar-api
-cd cdk-solar-api || echo "Make sure that the folder exists"
+mkdir cdk
+cd cdk || echo "Make sure that the folder exists"
 
 # Initialize project
 cdk init --language python
@@ -58,11 +58,9 @@ pip install -r requirements.txt || pip3 install -r requirements.txt
 
 cdk bootstrap
 
-# Storage Stack DynamoDB
-cdk synthesize --app "python3 app_storage_dynamodb.py"
-cdk diff --app "python3 app_storage_dynamodb.py"
-cdk deploy --app "python3 app_storage_dynamodb.py"
-cdk destroy --app "python3 app_storage_dynamodb.py"
+# Setup environment (choose one)
+export ENVIRONMENT="dev"
+export ENVIRONMENT="prod"
 
 # Storage Stack RDS
 cdk synthesize --app "python3 app_storage_rds.py"
